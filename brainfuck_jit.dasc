@@ -1,0 +1,167 @@
+#pragma once
+
+#ifndef __BRAINFUCK_JIT
+#define __BRAINFUCK_JIT
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+	
+|.arch x86
+|.actionlist actions
+|.section code
+|.globals GLOB_
+
+#define Dst &state
+
+typedef int (__cdecl *BrainfuckBinary)(uint8_t* memory);
+
+BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, int OUT_BUFFSIZE) {
+	// Initialize GIT
+	dasm_State *state;
+	initjit(&state, actions, GLOB__MAX);
+	
+	// Dynamic label
+	uint32_t maxpc = 0;
+	int pcstack[MAX_NESTING];
+	int *top = pcstack, *limit = pcstack + MAX_NESTING;
+	
+	| // Store register
+	| push   ebp
+	| push   ebx
+	| push   esi
+	| push   edi
+	|
+	| // Create working area
+	| mov    ebp, esp
+	| sub    esp, OUT_BUFFSIZE+64
+	|
+	| // [ebp+20] = first argument, the memory buffer
+	| mov    ebx, dword [ebp+20]
+	|
+	| // Output buffering
+	| mov    edi, ebp
+	| sub    edi, OUT_BUFFSIZE+4
+	| xor    edx, edx
+	
+	char last = 0;
+	int count = 0;
+	
+	for (int i = 0; i < len; i++) {
+		char in = code[i];
+		
+		if (in != last) {
+			switch (last) {
+				case '+': 
+					| add byte [ebx], count
+					break;
+				case '-':
+					| sub byte [ebx], count
+					break;
+				case '>': 
+					| add ebx, count
+					break;
+				case '<': 
+					| sub ebx, count
+					break;
+			}
+			
+			count = 0;
+		}
+		
+		last = in;
+		
+		switch (in) {
+			case '+':
+				count++;
+				break;
+
+			case '-':
+				count++;
+				break;
+
+			case '>':
+				count++;
+				break;
+
+			case '<':
+				count++;
+				break;
+
+			case '.':
+				| // Store current char in buffer
+				| movzx eax, byte [ebx]
+				| mov   byte [edi+edx], al
+				| inc   edx
+				|
+				| // If buffer is not overflowing, do not print
+				| cmp   edx, OUT_BUFFSIZE
+				| jl    >1
+				|
+				| // Print out
+				| mov   byte [edi+edx], 0
+				| mov   [esp], edi
+				| call  &printf
+				| xor   edx, edx
+				|
+				| 1:
+				break; 
+
+			case ',':
+				| // Need to store edx across call
+				| mov   [esp-4], edx
+				| call  &getchar
+				| mov   byte [ebx], al
+				| mov   edx, [esp-4]
+				break;
+
+			case '[':
+				if (top == limit)
+					return 0;
+				
+		        maxpc += 2;
+		        *top++ = maxpc;
+		        dasm_growpc(&state, maxpc);
+		        
+		        | jmp   =>(maxpc-2)
+		        |
+		        |.align 16
+		        | =>(maxpc-1):
+			    break;
+			    
+			case ']':
+				if (top == pcstack)
+					return 0;
+				
+		        top--;
+		        
+		        |.align 16
+		        | =>(*top-2):
+		        | cmp   byte [ebx], 0
+		        | jne   =>(*top-1)
+		        break;
+		}
+	}
+
+	| // Print remaining char in buffer
+	| mov     byte [edi+edx], 0
+	| mov     [esp], edi
+	| call    &printf
+	|
+	| // Function epilogue
+	| xor eax, eax
+	| mov esp, ebp
+	| pop edi
+	| pop esi
+	| pop ebx
+	| pop ebp
+	| ret
+
+	
+	BrainfuckBinary fptr = (BrainfuckBinary) jitcode(&state);
+	return fptr;
+}
+
+#undef Dst
+#endif
+
