@@ -1,5 +1,14 @@
 #include "dynasm_driver.h"
-#include "brainfuck_jit.h"
+
+#if defined(__x86_64__) || defined(_M_X64)
+# ifdef _WIN64
+#  include "brainfuck_jit_amd64_win.h"
+# else
+#  include "brainfuck_jit_amd64_linux.h"
+# endif
+#else
+# include "brainfuck_jit.h"
+#endif
 
 #include <stdio.h>
 #include <stdint.h>

@@ -1,0 +1,171 @@
+#pragma once
+
+#ifndef __BRAINFUCK_JIT
+#define __BRAINFUCK_JIT
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+	
+|.arch x64
+|.actionlist actions
+|.section code
+|.globals GLOB_
+|.define PRM, rcx
+
+#define Dst &state
+
+typedef int (__cdecl *BrainfuckBinary)(uint8_t* memory);
+
+BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, int OUT_BUFFSIZE) {
+	// Initialize GIT
+	dasm_State *state;
+	initjit(&state, actions, GLOB__MAX);
+	
+	// Dynamic label
+	uint32_t maxpc = 0;
+	int pcstack[MAX_NESTING];
+	int *top = pcstack, *limit = pcstack + MAX_NESTING;
+	
+	| // Store register
+	| push   rbp
+	| push   r15
+	| push   r14
+	| push   r13
+	| push   r12
+	|
+	| // Create working area
+	| mov    rbp, rsp
+	| sub    rsp, OUT_BUFFSIZE+64 // and shadow space is already reserved
+	|
+	| // PARA = first argument, the memory buffer
+	| mov    r15, PRM
+	| xor    PRM, PRM
+	|
+	| // Output buffering
+	| mov    r14, rbp
+	| sub    r14, OUT_BUFFSIZE+4
+	| xor    r12, r12
+	
+	char last = 0;
+	int count = 0;
+	
+	for (int i = 0; i < len; i++) {
+		char in = code[i];
+		
+		if (in != last) {
+			switch (last) {
+				case '+': 
+					| add byte [r15], count
+					break;
+				case '-':
+					| sub byte [r15], count
+					break;
+				case '>': 
+					| add r15, count
+					break;
+				case '<': 
+					| sub r15, count
+					break;
+			}
+			
+			count = 0;
+		}
+		
+		last = in;
+		
+		switch (in) {
+			case '+':
+				count++;
+				break;
+
+			case '-':
+				count++;
+				break;
+
+			case '>':
+				count++;
+				break;
+
+			case '<':
+				count++;
+				break;
+
+			case '.':
+				| // Store current char in buffer
+				| movzx rax, byte [r15]
+				| mov   byte [r14+r12], al
+				| inc   r12
+				|
+				| // If buffer is not overflowing, do not print
+				| cmp   r12, OUT_BUFFSIZE
+				| jl    >1
+				|
+				| // Print out
+				| mov   byte [r14+r12], 0
+				| mov   PRM, r14
+				| xor   r12, r12
+				| mov64 rax, (uintptr_t) printf
+				| call  rax
+				|
+				| 1:
+				break; 
+
+			case ',':
+				| mov64 rax, (uintptr_t) getchar
+				| call  rax
+				| mov   byte [r15], al
+				break;
+
+			case '[':
+				if (top == limit)
+					return 0;
+				
+		        maxpc += 2;
+		        *top++ = maxpc;
+		        dasm_growpc(&state, maxpc);
+		        
+		        | jmp   =>(maxpc-2)
+		        |
+		        |.align 16
+		        | =>(maxpc-1):
+			    break;
+			    
+			case ']':
+				if (top == pcstack)
+					return 0;
+				
+		        top--;
+		        
+		        |.align 16
+		        | =>(*top-2):
+		        | cmp   byte [r15], 0
+		        | jne   =>(*top-1)
+		        break;
+		}
+	}
+
+	| // Print remaining char in buffer
+	| mov   byte [r14+r12], 0
+	| mov   PRM, r14
+	| mov64 rax, (uintptr_t) printf
+	| call  rax
+	|
+	| // Function epilogue
+	| xor rax, rax
+	| mov rsp, rbp
+	| pop r12
+	| pop r13
+	| pop r14
+	| pop r15
+	| pop rbp
+	| ret
+
+	
+	BrainfuckBinary fptr = (BrainfuckBinary) jitcode(&state);
+	return fptr;
+}
+
+#undef Dst
+#endif
+

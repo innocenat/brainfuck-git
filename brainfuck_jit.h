@@ -2,14 +2,14 @@
 ** This file has been pre-processed with DynASM.
 ** http://luajit.org/dynasm.html
 ** DynASM version 1.3.0, DynASM x86 version 1.3.0
-** DO NOT EDIT! The original file is in "..\brainfuck_jit.dasc".
+** DO NOT EDIT! The original file is in "brainfuck_jit.dasc".
 */
 
 #if DASM_VERSION != 10300
 #error "Version mismatch between DynASM and included encoding engine"
 #endif
 
-# 1 "..\brainfuck_jit.dasc"
+# 1 "brainfuck_jit.dasc"
 #pragma once
 
 #ifndef __BRAINFUCK_JIT
@@ -30,16 +30,16 @@ static const unsigned char actions[121] = {
   0,137,60,36,232,243,49,192,137,252,236,95,94,91,93,195,255
 };
 
-# 12 "..\brainfuck_jit.dasc"
+# 12 "brainfuck_jit.dasc"
 //|.section code
 #define DASM_SECTION_CODE	0
 #define DASM_MAXSECTION		1
-# 13 "..\brainfuck_jit.dasc"
+# 13 "brainfuck_jit.dasc"
 //|.globals GLOB_
 enum {
   GLOB__MAX
 };
-# 14 "..\brainfuck_jit.dasc"
+# 14 "brainfuck_jit.dasc"
 
 #define Dst &state
 
@@ -73,7 +73,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 	//| sub    edi, OUT_BUFFSIZE+4
 	//| xor    edx, edx
 	dasm_put(Dst, 0, OUT_BUFFSIZE+64, OUT_BUFFSIZE+4);
-# 46 "..\brainfuck_jit.dasc"
+# 46 "brainfuck_jit.dasc"
 	
 	char last = 0;
 	int count = 0;
@@ -86,22 +86,22 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 				case '+': 
 					//| add byte [ebx], count
 					dasm_put(Dst, 23, count);
-# 57 "..\brainfuck_jit.dasc"
+# 57 "brainfuck_jit.dasc"
 					break;
 				case '-':
 					//| sub byte [ebx], count
 					dasm_put(Dst, 27, count);
-# 60 "..\brainfuck_jit.dasc"
+# 60 "brainfuck_jit.dasc"
 					break;
 				case '>': 
 					//| add ebx, count
 					dasm_put(Dst, 31, count);
-# 63 "..\brainfuck_jit.dasc"
+# 63 "brainfuck_jit.dasc"
 					break;
 				case '<': 
 					//| sub ebx, count
 					dasm_put(Dst, 35, count);
-# 66 "..\brainfuck_jit.dasc"
+# 66 "brainfuck_jit.dasc"
 					break;
 			}
 			
@@ -145,7 +145,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 				//|
 				//| 1:
 				dasm_put(Dst, 40, OUT_BUFFSIZE, (ptrdiff_t)(printf));
-# 108 "..\brainfuck_jit.dasc"
+# 108 "brainfuck_jit.dasc"
 				break; 
 
 			case ',':
@@ -155,7 +155,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 				//| mov   byte [ebx], al
 				//| mov   edx, [esp-4]
 				dasm_put(Dst, 69, (ptrdiff_t)(getchar));
-# 116 "..\brainfuck_jit.dasc"
+# 116 "brainfuck_jit.dasc"
 				break;
 
 			case '[':
@@ -171,7 +171,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 		        //|.align 16
 		        //| =>(maxpc-1):
 		        dasm_put(Dst, 84, (maxpc-2), (maxpc-1));
-# 130 "..\brainfuck_jit.dasc"
+# 130 "brainfuck_jit.dasc"
 			    break;
 			    
 			case ']':
@@ -185,7 +185,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 		        //| cmp   byte [ebx], 0
 		        //| jne   =>(*top-1)
 		        dasm_put(Dst, 91, (*top-2), (*top-1));
-# 142 "..\brainfuck_jit.dasc"
+# 142 "brainfuck_jit.dasc"
 		        break;
 		}
 	}
@@ -204,7 +204,7 @@ BrainfuckBinary brainfuck_create_binary(char* code, int len, int MAX_NESTING, in
 	//| pop ebp
 	//| ret
 	dasm_put(Dst, 101, (ptrdiff_t)(printf));
-# 159 "..\brainfuck_jit.dasc"
+# 159 "brainfuck_jit.dasc"
 
 	
 	BrainfuckBinary fptr = (BrainfuckBinary) jitcode(&state);
